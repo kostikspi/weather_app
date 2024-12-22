@@ -60,6 +60,16 @@ def get_current_temperature(city, api_key):
 
 st.title("Анализ погоды")
 
+
+def detect_anomalies(df, seasonal_stats):
+    df = df.merge(seasonal_stats, on=['city', 'season'], how='left')
+    df['is_anomaly'] = ((df['temperature'] < df['seasonal_mean'] - 2 * df['seasonal_std']) |
+                        (df['temperature'] > df['seasonal_mean'] + 2 * df['seasonal_std']))
+    return df
+
+
+st.title("Анализ погоды")
+
 uploaded_file = st.file_uploader("Загрузите CSV-файл с историческими данными", type=["csv"])
 if uploaded_file:
     data = load_data(uploaded_file)
@@ -69,26 +79,22 @@ if uploaded_file:
     seasonal_stats = seasonal_analysis(data)
     city_data = data[data["city"] == city]
 
+    city_data = city_data.merge(seasonal_stats[["city", "season", "seasonal_mean", "seasonal_std"]],
+                                on=["city", "season"], how="left")
+
     st.subheader("Исторические данные для выбранного города")
     st.write(city_data.describe())
 
     st.subheader("Временной ряд температур с выделением аномалий")
     city_data["rolling_mean"] = city_data["temperature"].rolling(window=30).mean()
 
-    mean_temp = city_data["temperature"].mean()
-    std_temp = city_data["temperature"].std()
-    lower_bound = mean_temp - 2 * std_temp
-    upper_bound = mean_temp + 2 * std_temp
-
     plt.figure(figsize=(10, 5))
     plt.plot(city_data["timestamp"], city_data["temperature"], label="Температура", alpha=0.5)
     plt.plot(city_data["timestamp"], city_data["rolling_mean"], label="Скользящее среднее (30 дней)", color="orange")
-    plt.fill_between(
-        city_data["timestamp"], lower_bound, upper_bound, color="green", alpha=0.2, label="Интервал (норма)"
-    )
 
     anomalies = city_data[
-        (city_data["temperature"] > upper_bound) | (city_data["temperature"] < lower_bound)
+        (city_data["temperature"] > city_data["seasonal_mean"] + 2 * city_data["seasonal_std"]) |
+        (city_data["temperature"] < city_data["seasonal_mean"] - 2 * city_data["seasonal_std"])
         ]
     plt.scatter(anomalies["timestamp"], anomalies["temperature"], color="red", label="Аномалии")
 
