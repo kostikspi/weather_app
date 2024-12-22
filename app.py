@@ -1,3 +1,20 @@
+import subprocess
+import sys
+
+def install(package):
+    subprocess.check_call([sys.executable, "-m", "pip", "install", package])
+
+
+# List of required packages
+required_packages = ['streamlit', 'matplotlib', 'pandas', 'numpy', 'requests']
+
+# Install missing packages
+for package in required_packages:
+    try:
+        __import__(package)
+    except ImportError:
+        install(package)
+
 import streamlit as st
 import pandas as pd
 import requests
@@ -89,7 +106,7 @@ if uploaded_file:
 
     anomalies = city_data[
         (city_data["temperature"] > upper_bound) | (city_data["temperature"] < lower_bound)
-    ]
+        ]
     plt.scatter(anomalies["timestamp"], anomalies["temperature"], color="red", label="Аномалии")
 
     plt.xlabel("Дата")
